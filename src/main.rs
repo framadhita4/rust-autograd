@@ -35,8 +35,7 @@ fn main() {
             let target = Autograd::new(Array2::from_elem((1, 1), y_target));
 
             // diff = pred - target
-            // We use pred.add(&(-target))
-            let diff = pred.add(&Autograd::new(-target.value()));
+            let diff = pred.add(&target.neg());
             let loss = diff.mul(&diff);
 
             total_loss = total_loss.add(&loss);

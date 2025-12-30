@@ -9,6 +9,7 @@ enum Op {
     Mul,
     Tanh,
     ReLU,
+    Neg,
     None,
 }
 
@@ -38,7 +39,6 @@ impl Autograd {
         }
     }
 
-    // method to add two Autograd objects
     pub fn add(&self, other: &Autograd) -> Autograd {
         let value = &self.data.borrow().value + &other.data.borrow().value;
 
@@ -60,6 +60,15 @@ impl Autograd {
         result.data.borrow_mut().op = Op::Mul;
         result.data.borrow_mut().backward = Some(|_| {});
 
+        result
+    }
+
+    pub fn neg(&self) -> Autograd {
+        let value = -self.data.borrow().value.clone();
+        let result = Autograd::new(value);
+        result.data.borrow_mut().children.push(self.clone());
+        result.data.borrow_mut().op = Op::Neg;
+        result.data.borrow_mut().backward = Some(|_| {});
         result
     }
 
@@ -127,6 +136,11 @@ impl Autograd {
 
                         children[0].data.borrow_mut().grad += &grad.dot(&v1.t());
                         children[1].data.borrow_mut().grad += &v0.t().dot(&grad);
+                    }
+                    Op::Neg => {
+                        // y = -x -> dy/dx = -1
+                        let mut v0 = children[0].data.borrow_mut();
+                        v0.grad += &(-grad);
                     }
                     Op::Tanh => {
                         // y = tanh(x) -> dy/dx = 1 - tanh(x)^2
