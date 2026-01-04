@@ -1,15 +1,19 @@
 use ndarray::Array2;
 use std::cell::RefCell;
 use std::collections::HashSet;
+use std::f64::EPSILON;
 use std::rc::Rc;
 
 #[derive(Debug, Clone, Copy)]
 enum Op {
     Add,
+    Neg,
     Mul,
+    Div,
+    Log,
+    Exp,
     Tanh,
     ReLU,
-    Neg,
     None,
 }
 
@@ -63,12 +67,48 @@ impl Autograd {
         result
     }
 
+    pub fn div(&self, other: &Autograd) -> Autograd {
+        let value = &self.data.borrow().value / &other.data.borrow().value;
+        let result = Autograd::new(value);
+
+        result.data.borrow_mut().children.push(self.clone());
+        result.data.borrow_mut().children.push(other.clone());
+        result.data.borrow_mut().op = Op::Div;
+        result.data.borrow_mut().backward = Some(|_| {});
+
+        result
+    }
+
+    pub fn log(&self) -> Autograd {
+        let value = self.data.borrow().value.mapv(|x| f64::max(x, EPSILON).ln());
+        let result = Autograd::new(value);
+
+        result.data.borrow_mut().children.push(self.clone());
+        result.data.borrow_mut().op = Op::Log;
+        result.data.borrow_mut().backward = Some(|_| {});
+
+        result
+    }
+
     pub fn neg(&self) -> Autograd {
         let value = -self.data.borrow().value.clone();
         let result = Autograd::new(value);
+
         result.data.borrow_mut().children.push(self.clone());
         result.data.borrow_mut().op = Op::Neg;
         result.data.borrow_mut().backward = Some(|_| {});
+
+        result
+    }
+
+    pub fn exp(&self) -> Autograd {
+        let value = self.data.borrow().value.mapv(|x| x.exp());
+        let result = Autograd::new(value);
+
+        result.data.borrow_mut().children.push(self.clone());
+        result.data.borrow_mut().op = Op::Exp;
+        result.data.borrow_mut().backward = Some(|_| {});
+
         result
     }
 
@@ -137,10 +177,32 @@ impl Autograd {
                         children[0].data.borrow_mut().grad += &grad.dot(&v1.t());
                         children[1].data.borrow_mut().grad += &v0.t().dot(&grad);
                     }
+                    Op::Div => {
+                        let v0 = children[0].data.borrow().value.clone();
+                        let v1 = children[1].data.borrow().value.clone();
+
+                        // y = a / b -> dy/da = 1/b, dy/db = -a/b^2
+                        children[0].data.borrow_mut().grad += &(&grad / &v1);
+                        children[1].data.borrow_mut().grad +=
+                            &(-(&v0 / &v1.mapv(|x| x * x)) * &grad);
+                    }
+                    Op::Log => {
+                        // y = log(x) -> dy/dx = 1/x
+                        let mut v0 = children[0].data.borrow_mut();
+
+                        v0.grad += &(&grad / &value);
+                    }
                     Op::Neg => {
                         // y = -x -> dy/dx = -1
                         let mut v0 = children[0].data.borrow_mut();
+
                         v0.grad += &(-grad);
+                    }
+                    Op::Exp => {
+                        // y = exp(x) -> dy/dx = exp(x)
+                        let mut v0 = children[0].data.borrow_mut();
+
+                        v0.grad += &(&grad * &value);
                     }
                     Op::Tanh => {
                         // y = tanh(x) -> dy/dx = 1 - tanh(x)^2

@@ -7,9 +7,11 @@ use crate::autograd::Autograd;
 pub enum Activation {
     ReLU,
     Tanh,
+    Softmax,
     None,
 }
 
+#[derive(Debug, Clone)]
 pub struct Neuron {
     weights: Vec<Autograd>,
     bias: Autograd,
@@ -38,6 +40,7 @@ impl Neuron {
         match activation {
             Activation::ReLU => sum.relu(),
             Activation::Tanh => sum.tanh(),
+            Activation::Softmax => sum,
             Activation::None => sum,
         }
     }
@@ -64,14 +67,32 @@ impl Layer {
     }
 
     pub fn call(&self, x: &[Autograd]) -> Vec<Autograd> {
-        self.neurons
+        let outputs = self
+            .neurons
             .iter()
             .map(|n| n.call(x, self.activation))
-            .collect()
+            .collect::<Vec<Autograd>>();
+
+        if let Activation::Softmax = self.activation {
+            return self.softmax_layer(&outputs);
+        }
+        outputs
     }
 
     pub fn parameters(&self) -> Vec<Autograd> {
         self.neurons.iter().flat_map(|n| n.parameters()).collect()
+    }
+
+    fn softmax_layer(&self, logits: &Vec<Autograd>) -> Vec<Autograd> {
+        let exps: Vec<Autograd> = logits.iter().map(|x| x.exp()).collect();
+
+        let mut sum_exps = exps[0].clone();
+
+        for i in 1..exps.len() {
+            sum_exps = sum_exps.add(&exps[i]);
+        }
+
+        exps.into_iter().map(|x| x.div(&sum_exps)).collect()
     }
 }
 
@@ -89,7 +110,7 @@ impl MLP {
                 let activation = if i < nouts.len() - 1 {
                     Activation::ReLU
                 } else {
-                    Activation::None
+                    Activation::Softmax
                 };
                 Layer::new(sizes[i], sizes[i + 1], activation)
             })

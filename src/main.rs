@@ -1,10 +1,11 @@
 use ndarray::Array2;
 use simple_mlp::autograd::Autograd;
+use simple_mlp::helpers::cross_entropy::cross_entropy_loss;
 use simple_mlp::mlp::MLP;
 
 fn main() {
     // 2 -> 4 -> 1
-    let mlp = MLP::new(2, &[4, 1]);
+    let mlp = MLP::new(2, &[4, 2]);
 
     let inputs = vec![
         vec![0.0, 0.0],
@@ -14,8 +15,8 @@ fn main() {
     ];
     let targets = vec![0.0, 1.0, 1.0, 0.0];
 
-    let epochs = 500;
-    let learning_rate = 0.01;
+    let epochs = 1000;
+    let learning_rate = 0.1;
 
     println!("Starting training...");
 
@@ -29,14 +30,7 @@ fn main() {
                 .collect();
 
             let outputs = mlp.call(&x);
-            let pred = &outputs[0];
-
-            // MSE Loss: (pred - target)^2
-            let target = Autograd::new(Array2::from_elem((1, 1), y_target));
-
-            // diff = pred - target
-            let diff = pred.add(&target.neg());
-            let loss = diff.mul(&diff);
+            let loss = cross_entropy_loss(&outputs, y_target as usize);
 
             total_loss = total_loss.add(&loss);
         }
