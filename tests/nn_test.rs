@@ -4,7 +4,7 @@ use rust_autograd::nn::{Activation, Layer, MLP, Neuron};
 
 #[test]
 fn test_neuron() {
-    let n = Neuron::new(2);
+    let n = Neuron::new(2, 42);
     let x = vec![Autograd::new(array![[1.0]]), Autograd::new(array![[-2.0]])];
     let y = n.call(&x, Activation::None);
     assert_eq!(y.value().shape(), &[1, 1]);
@@ -15,7 +15,7 @@ fn test_neuron() {
 
 #[test]
 fn test_layer() {
-    let l = Layer::new(2, 3, Activation::ReLU);
+    let l = Layer::new(2, 3, Activation::ReLU, 42);
     let x = vec![Autograd::new(array![[1.0]]), Autograd::new(array![[-2.0]])];
     let y = l.call(&x);
     assert_eq!(y.len(), 3);
@@ -27,7 +27,7 @@ fn test_layer() {
 
 #[test]
 fn test_layer_softmax_deterministic() {
-    let l = Layer::new(2, 2, Activation::Softmax);
+    let l = Layer::new(2, 2, Activation::Softmax, 42);
 
     for p in l.parameters() {
         p.set_value(array![[0.0]]);
@@ -52,7 +52,7 @@ fn test_layer_softmax_deterministic() {
 
 #[test]
 fn test_mlp() {
-    let mlp = MLP::new(2, &[4, 1]);
+    let mlp = MLP::new(2, &[4, 1], 42);
     let x = vec![Autograd::new(array![[1.0]]), Autograd::new(array![[-2.0]])];
     let y = mlp.call(&x);
     assert_eq!(y.len(), 1);

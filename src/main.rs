@@ -6,7 +6,7 @@ use rust_autograd::optimizer::{AdamW, Optimizer, SGD};
 
 fn main() {
     // 2 -> 4 -> 2
-    let mlp = MLP::new(2, &[4, 2]);
+    let mlp = MLP::new(2, &[4, 2], 42);
 
     let inputs = vec![
         vec![0.0, 0.0],

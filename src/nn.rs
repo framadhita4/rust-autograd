@@ -1,5 +1,6 @@
 use ndarray::Array2;
-use rand::Rng;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 
 use crate::autograd::Autograd;
 
@@ -18,8 +19,8 @@ pub struct Neuron {
 }
 
 impl Neuron {
-    pub fn new(nin: usize) -> Self {
-        let mut rng = rand::thread_rng();
+    pub fn new(nin: usize, seed: u64) -> Self {
+        let mut rng = StdRng::seed_from_u64(seed);
 
         let scale = (2.0 / nin as f64).sqrt();
         let weights = (0..nin)
@@ -58,8 +59,10 @@ pub struct Layer {
 }
 
 impl Layer {
-    pub fn new(nin: usize, nout: usize, activation: Activation) -> Self {
-        let neurons = (0..nout).map(|_| Neuron::new(nin)).collect();
+    pub fn new(nin: usize, nout: usize, activation: Activation, seed: u64) -> Self {
+        let neurons = (0..nout)
+            .map(|i| Neuron::new(nin, seed + i as u64))
+            .collect();
         Self {
             neurons,
             activation,
@@ -101,7 +104,7 @@ pub struct MLP {
 }
 
 impl MLP {
-    pub fn new(nin: usize, nouts: &[usize]) -> Self {
+    pub fn new(nin: usize, nouts: &[usize], seed: u64) -> Self {
         let mut sizes = vec![nin];
         sizes.extend_from_slice(nouts);
 
@@ -112,7 +115,7 @@ impl MLP {
                 } else {
                     Activation::Softmax
                 };
-                Layer::new(sizes[i], sizes[i + 1], activation)
+                Layer::new(sizes[i], sizes[i + 1], activation, seed + i as u64)
             })
             .collect();
 
