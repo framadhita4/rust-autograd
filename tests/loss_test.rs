@@ -1,6 +1,6 @@
 use ndarray::array;
-use simple_mlp::autograd::Autograd;
-use simple_mlp::loss::{Loss, MSE, SoftmaxCrossEntropyLoss};
+use rust_autograd::autograd::Autograd;
+use rust_autograd::loss::{Loss, MSE, SoftmaxCrossEntropyLoss};
 
 #[test]
 fn test_mse_loss() {

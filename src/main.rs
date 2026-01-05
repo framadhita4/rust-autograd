@@ -1,8 +1,8 @@
 use ndarray::Array2;
-use simple_mlp::autograd::Autograd;
-use simple_mlp::loss::{Loss, MSE, SoftmaxCrossEntropyLoss};
-use simple_mlp::nn::MLP;
-use simple_mlp::optimizer::{AdamW, Optimizer, SGD};
+use rust_autograd::autograd::Autograd;
+use rust_autograd::loss::{Loss, MSE, SoftmaxCrossEntropyLoss};
+use rust_autograd::nn::MLP;
+use rust_autograd::optimizer::{AdamW, Optimizer, SGD};
 
 fn main() {
     // 2 -> 4 -> 2

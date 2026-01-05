@@ -1,6 +1,6 @@
 use ndarray::array;
-use simple_mlp::autograd::Autograd;
-use simple_mlp::helpers::visualization::Visualizer;
+use rust_autograd::autograd::Autograd;
+use rust_autograd::helpers::visualization::Visualizer;
 use std::io::Cursor;
 
 #[test]

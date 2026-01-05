@@ -1,5 +1,5 @@
 [package]
-name = "simple-mlp"
+name = "rust-autograd"
 version = "0.1.0"
 edition = "2024"
 

@@ -1,5 +1,5 @@
 use ndarray::array;
-use simple_mlp::autograd::Autograd;
+use rust_autograd::autograd::Autograd;
 
 #[test]
 fn test_add() {

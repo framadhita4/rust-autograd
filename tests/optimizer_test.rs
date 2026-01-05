@@ -1,6 +1,6 @@
 use ndarray::array;
-use simple_mlp::autograd::Autograd;
-use simple_mlp::optimizer::{AdamW, Optimizer, SGD};
+use rust_autograd::autograd::Autograd;
+use rust_autograd::optimizer::{AdamW, Optimizer, SGD};
 
 #[test]
 fn test_sgd_optimizer() {

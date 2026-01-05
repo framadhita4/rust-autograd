@@ -1,6 +1,6 @@
 use ndarray::array;
-use simple_mlp::autograd::Autograd;
-use simple_mlp::nn::{Activation, Layer, MLP, Neuron};
+use rust_autograd::autograd::Autograd;
+use rust_autograd::nn::{Activation, Layer, MLP, Neuron};
 
 #[test]
 fn test_neuron() {
