@@ -7,9 +7,11 @@ use std::rc::Rc;
 #[derive(Debug, Clone, Copy)]
 enum Op {
     Add,
+    Sub,
     Neg,
     Mul,
     Div,
+    Pow,
     Log,
     Exp,
     Tanh,
@@ -24,6 +26,7 @@ struct AutogradData {
     children: Vec<Autograd>,
     op: Op,
     backward: Option<fn(&AutogradData)>,
+    name: String,
 }
 
 // Wrapper with Rc for shared ownership
@@ -39,6 +42,7 @@ impl Autograd {
                 children: Vec::new(),
                 op: Op::None,
                 backward: None,
+                name: String::new(),
             })),
         }
     }
@@ -50,6 +54,18 @@ impl Autograd {
         result.data.borrow_mut().children.push(self.clone());
         result.data.borrow_mut().children.push(other.clone());
         result.data.borrow_mut().op = Op::Add;
+        result.data.borrow_mut().backward = Some(|_| {});
+
+        result
+    }
+
+    pub fn sub(&self, other: &Autograd) -> Autograd {
+        let value = &self.data.borrow().value - &other.data.borrow().value;
+        let result = Autograd::new(value);
+
+        result.data.borrow_mut().children.push(self.clone());
+        result.data.borrow_mut().children.push(other.clone());
+        result.data.borrow_mut().op = Op::Sub;
         result.data.borrow_mut().backward = Some(|_| {});
 
         result
@@ -74,6 +90,22 @@ impl Autograd {
         result.data.borrow_mut().children.push(self.clone());
         result.data.borrow_mut().children.push(other.clone());
         result.data.borrow_mut().op = Op::Div;
+        result.data.borrow_mut().backward = Some(|_| {});
+
+        result
+    }
+
+    pub fn pow(&self, power: f64) -> Autograd {
+        let value = &self.data.borrow().value.mapv(|x| x.powf(power));
+        let result = Autograd::new(value.clone());
+
+        result.data.borrow_mut().children.push(self.clone());
+        result
+            .data
+            .borrow_mut()
+            .children
+            .push(Autograd::new(Array2::from_elem((1, 1), power)));
+        result.data.borrow_mut().op = Op::Pow;
         result.data.borrow_mut().backward = Some(|_| {});
 
         result
@@ -169,6 +201,11 @@ impl Autograd {
                         children[0].data.borrow_mut().grad += &grad;
                         children[1].data.borrow_mut().grad += &grad;
                     }
+                    Op::Sub => {
+                        // y = a - b -> da = dy, db = -dy
+                        children[0].data.borrow_mut().grad += &grad;
+                        children[1].data.borrow_mut().grad += &(-grad);
+                    }
                     Op::Mul => {
                         // y = a * b -> da = dy * b^T, db = a^T * dy
                         let v0 = children[0].data.borrow().value.clone();
@@ -186,11 +223,21 @@ impl Autograd {
                         children[1].data.borrow_mut().grad +=
                             &(-(&v0 / &v1.mapv(|x| x * x)) * &grad);
                     }
+                    Op::Pow => {
+                        // y = x^p -> dy/dx = p * x^(p-1)
+                        let v0_val = children[0].data.borrow().value.clone();
+                        let mut v0 = children[0].data.borrow_mut();
+                        let power = children[1].data.borrow().value[[0, 0]];
+                        let local_deriv = v0_val.mapv(|x| power * x.powf(power - 1.0));
+
+                        v0.grad += &(&grad * &local_deriv);
+                    }
                     Op::Log => {
                         // y = log(x) -> dy/dx = 1/x
+                        let v0_val = children[0].data.borrow().value.clone();
                         let mut v0 = children[0].data.borrow_mut();
 
-                        v0.grad += &(&grad / &value);
+                        v0.grad += &(&grad / &v0_val);
                     }
                     Op::Neg => {
                         // y = -x -> dy/dx = -1
@@ -249,6 +296,33 @@ impl Autograd {
     pub fn set_grad(&self, grad: Array2<f64>) {
         self.data.borrow_mut().grad = grad;
     }
+
+    pub fn set_name(&self, name: &str) {
+        self.data.borrow_mut().name = name.to_string();
+    }
+
+    pub fn name(&self) -> String {
+        self.data.borrow().name.clone()
+    }
+
+    pub fn children(&self) -> Vec<Autograd> {
+        self.data.borrow().children.clone()
+    }
+
+    pub fn op(&self) -> String {
+        format!("{:?}", self.data.borrow().op)
+    }
+
+    pub fn get_topo(&self) -> Vec<Autograd> {
+        let mut topo = Vec::new();
+        let mut visited = HashSet::new();
+        self.build_topo(&mut topo, &mut visited);
+        topo
+    }
+
+    pub fn as_ptr(&self) -> *const () {
+        Rc::as_ptr(&self.data) as *const ()
+    }
 }
 
 impl Clone for Autograd {
@@ -263,6 +337,7 @@ impl std::fmt::Debug for Autograd {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let data = self.data.borrow();
         f.debug_struct("Autograd")
+            .field("name", &data.name)
             .field("value", &data.value)
             .field("grad", &data.grad)
             .field("children", &data.children)

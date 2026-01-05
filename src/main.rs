@@ -1,10 +1,11 @@
 use ndarray::Array2;
 use simple_mlp::autograd::Autograd;
-use simple_mlp::helpers::cross_entropy::cross_entropy_loss;
-use simple_mlp::mlp::MLP;
+use simple_mlp::loss::{Loss, MSE, SoftmaxCrossEntropyLoss};
+use simple_mlp::nn::MLP;
+use simple_mlp::optimizer::{AdamW, Optimizer, SGD};
 
 fn main() {
-    // 2 -> 4 -> 1
+    // 2 -> 4 -> 2
     let mlp = MLP::new(2, &[4, 2]);
 
     let inputs = vec![
@@ -18,7 +19,15 @@ fn main() {
     let epochs = 1000;
     let learning_rate = 0.1;
 
+    // let loss_fn = MSE::new();
+    let loss_fn = SoftmaxCrossEntropyLoss::new();
+
+    // let mut optimizer = AdamW::new(learning_rate);
+    let mut optimizer = SGD::new(learning_rate);
+
     println!("Starting training...");
+
+    let parameters = mlp.parameters();
 
     for epoch in 1..=epochs {
         let mut total_loss = Autograd::new(Array2::zeros((1, 1)));
@@ -30,22 +39,16 @@ fn main() {
                 .collect();
 
             let outputs = mlp.call(&x);
-            let loss = cross_entropy_loss(&outputs, y_target as usize);
+            let loss = loss_fn.forward(&outputs, y_target as usize);
 
             total_loss = total_loss.add(&loss);
         }
 
-        mlp.zero_grad();
+        optimizer.zero_grad(&parameters);
         total_loss.set_grad(Array2::from_elem((1, 1), 1.0));
         total_loss.backward();
 
-        // Update parameters (SGD)
-        for p in mlp.parameters() {
-            let grad = p.grad();
-            let current_val = p.value();
-            let new_val = current_val - grad * learning_rate;
-            p.set_value(new_val);
-        }
+        optimizer.step(&parameters);
 
         if epoch % 50 == 0 || epoch == 1 {
             let loss_val = total_loss.value()[[0, 0]];
@@ -61,9 +64,10 @@ fn main() {
             .collect();
         let outputs = mlp.call(&x);
         println!(
-            "Input: {:?} | Pred: {:.4}",
+            "Input: {:?} | P(class=0): {:.4} | P(class=1): {:.4}",
             x_data,
-            outputs[0].value()[[0, 0]]
+            outputs[0].value()[[0, 0]],
+            outputs[1].value()[[0, 0]]
         );
     }
 }

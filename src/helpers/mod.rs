@@ -1,1 +1,1 @@
-pub mod cross_entropy;
+pub mod visualization;

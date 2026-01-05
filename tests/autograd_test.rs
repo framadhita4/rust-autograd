@@ -41,18 +41,43 @@ fn test_div() {
 }
 
 #[test]
+fn test_sub() {
+    let a = Autograd::new(array![[10.0, 5.0]]);
+    let b = Autograd::new(array![[3.0, 2.0]]);
+    let c = a.sub(&b);
+    assert_eq!(c.value(), array![[7.0, 3.0]]);
+
+    c.set_grad(array![[1.0, 1.0]]);
+    c.backward();
+    assert_eq!(a.grad(), array![[1.0, 1.0]]);
+    assert_eq!(b.grad(), array![[-1.0, -1.0]]);
+}
+
+#[test]
+fn test_pow() {
+    let a = Autograd::new(array![[2.0, 3.0]]);
+    let b = a.pow(2.0);
+    assert_eq!(b.value(), array![[4.0, 9.0]]);
+
+    b.set_grad(array![[1.0, 1.0]]);
+    b.backward();
+    // d(x^2)/dx = 2*x
+    assert_eq!(a.grad(), array![[4.0, 6.0]]);
+}
+
+#[test]
 fn test_log() {
     let a = Autograd::new(array![[10.0, 20.0]]);
     let b = a.log();
-    assert_eq!(b.value(), array![[2.302585092994046, 2.995732273553991]]);
+    assert!((b.value()[[0, 0]] - 2.302585092994046).abs() < 1e-10);
+    assert!((b.value()[[0, 1]] - 2.995732273553991).abs() < 1e-10);
 
     // dlog(x)/dx = 1/x
     b.set_grad(array![[1.0, 1.0]]);
     b.backward();
-    assert_eq!(
-        a.grad(),
-        array![[1.0 / 2.302585092994046, 1.0 / 2.995732273553991]]
-    );
+    // Use epsilon for float comparison
+    assert!((a.grad()[[0, 0]] - 0.1).abs() < 1e-7);
+    assert!((a.grad()[[0, 1]] - 0.05).abs() < 1e-7);
 }
 
 #[test]

@@ -1,3 +1,6 @@
 pub mod autograd;
 pub mod helpers;
-pub mod mlp;
+pub mod nn;
+
+pub mod loss;
+pub mod optimizer;
